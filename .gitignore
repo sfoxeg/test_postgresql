@@ -1,3 +1,7 @@
 .idea
+.env
 db.py
 data.csv
+
+./app/logs/*
+./app/dags/__pycache__
