@@ -30,7 +30,7 @@ SELECT *
 FROM sall_year
 LEFT JOIN sall_quarterly USING (counterparty_name)
 LEFT JOIN sall_month USING (counterparty_name)
-ORDER BY counterparty_name
+ORDER BY counterparty_name;
 
 
 CREATE VIEW ddm.buy_stat AS
@@ -61,7 +61,7 @@ SELECT *
 FROM buy_year
 LEFT JOIN buy_quarterly USING (product_name)
 LEFT JOIN buy_month USING (product_name)
-ORDER BY product_name
+ORDER BY product_name;
 
 
 CREATE VIEW ddm.proceeds_stat AS

@@ -1,15 +1,15 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.operators.postgres_operator import PostgresOperator
+from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.utils.dates import days_ago
 import random
 from datetime import datetime
-import csv
 from mimesis import Finance
 from mimesis import Hardware
 
 
 def generate_data():
+    insert = "INSERT INTO dds_stg.invoices (type, num, deal_date, counterparty_name, product_name, amt, unit_price) VALUES\n"
     x = 730  # Данные за Х дней
     dt = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
     dt = datetime.timestamp(dt)
@@ -34,13 +34,9 @@ def generate_data():
                 amt = random.randint(1, 5)
                 price = facke_f.price(10000, 100000)
 
-                data.append([type, num, date, company, product, amt, price])
+                insert += f"('{type}', '{num}', '{date}', '{company}', '{product}', '{amt}', '{price}'),\n"
         dt += 86400
-
-    with open('data.csv', 'w', newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        for row in data:
-            writer.writerow(row)
+    return insert[0:-2] + ';'
 
 
 dag = DAG(
@@ -49,17 +45,32 @@ dag = DAG(
     start_date=days_ago(1)
 )
 
-generate_test_data = PythonOperator(
-    task_id='generate_test_data',
-    dag=dag,
-    python_callable=generate_data
-)
-
 create_dds_stg = PostgresOperator(
+    dag=dag,
     task_id="create_dds_stg",
     postgres_conn_id="postgres_default",
-    sql="sql/dds_stg.sql",
+    sql="sql/dds_stg.sql"
 )
 
+generate_test_data = PostgresOperator(
+    dag=dag,
+    task_id="generate_test_data",
+    postgres_conn_id="postgres_default",
+    sql=generate_data()
+)
 
-generate_test_data >> create_dds_stg
+create_dds = PostgresOperator(
+    dag=dag,
+    task_id="create_dds",
+    postgres_conn_id="postgres_default",
+    sql="sql/dds.sql"
+)
+
+create_ddm = PostgresOperator(
+    dag=dag,
+    task_id="create_ddm",
+    postgres_conn_id="postgres_default",
+    sql="sql/ddm.sql"
+)
+
+create_dds_stg >> generate_test_data >> create_dds >> create_ddm
